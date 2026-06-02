@@ -1,0 +1,18 @@
+[project]
+name = "business-tools-api"
+version = "0.1.0"
+description = "Azure Functions API for business-facing Ecwid tools."
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "azure-functions>=1.20.0",
+  "requests>=2.32.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

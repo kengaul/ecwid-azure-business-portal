@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "ECWID_API_TOKEN": "replace-me",
+    "ECWID_SHOP_ID": "replace-me",
+    "FRONTPAGE_MAX_SKUS": "200",
+    "APP_ENVIRONMENT": "local"
+  }
+}

@@ -1,0 +1,17 @@
+project_name            = "business-tools"
+environment             = "prod"
+location                = "uksouth"
+static_web_app_location = "westeurope"
+function_app_location   = "westeurope"
+azure_subscription_id   = "00000000-0000-0000-0000-000000000000"
+azure_tenant_id         = "00000000-0000-0000-0000-000000000000"
+ecwid_shop_id           = "replace-me"
+frontpage_max_skus      = 200
+require_entra_assignment = true
+
+# Optional: assign one or more Entra groups to the Enterprise Application.
+authorized_group_object_ids = []
+
+tags = {
+  owner = "ecommerce"
+}
