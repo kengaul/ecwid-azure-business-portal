@@ -3,6 +3,7 @@ environment             = "prod"
 location                = "uksouth"
 static_web_app_location = "westeurope"
 function_app_location   = "westeurope"
+custom_domain_name      = null
 azure_subscription_id   = "00000000-0000-0000-0000-000000000000"
 azure_tenant_id         = "00000000-0000-0000-0000-000000000000"
 ecwid_shop_id           = "replace-me"

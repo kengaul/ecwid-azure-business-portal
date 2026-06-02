@@ -184,7 +184,11 @@ Terraform will add the Static Web App custom domain and add the matching Entra c
 https://tools.example.com/.auth/login/aad/callback
 ```
 
-For an apex/root domain, use `custom_domain_validation_type = "dns-txt-token"` and follow the TXT validation token shown by `terraform output static_web_app_custom_domain_validation_token`.
+For an apex/root domain, use `custom_domain_validation_type = "dns-txt-token"` and follow the TXT validation token shown by:
+
+```bash
+terraform output -raw static_web_app_custom_domain_validation_token
+```
 
 ## Tests
 

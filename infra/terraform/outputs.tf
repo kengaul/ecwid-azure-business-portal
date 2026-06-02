@@ -7,7 +7,8 @@ output "static_web_app_default_host_name" {
 }
 
 output "static_web_app_custom_domain_validation_token" {
-  value = try(azurerm_static_web_app_custom_domain.web[0].validation_token, null)
+  value     = try(azurerm_static_web_app_custom_domain.web[0].validation_token, null)
+  sensitive = true
 }
 
 output "entra_application_client_id" {

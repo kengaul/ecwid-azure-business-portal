@@ -67,6 +67,23 @@ variable "static_web_app_sku_size" {
   default     = "Standard"
 }
 
+variable "custom_domain_name" {
+  description = "Optional custom domain for the Static Web App, for example tools.example.com. Create the DNS record before applying when using cname-delegation."
+  type        = string
+  default     = null
+}
+
+variable "custom_domain_validation_type" {
+  description = "Validation type for the Static Web App custom domain. Use cname-delegation for subdomains and dns-txt-token for apex domains."
+  type        = string
+  default     = "cname-delegation"
+
+  validation {
+    condition     = contains(["cname-delegation", "dns-txt-token"], var.custom_domain_validation_type)
+    error_message = "custom_domain_validation_type must be cname-delegation or dns-txt-token."
+  }
+}
+
 variable "entra_app_secret_years" {
   description = "Validity period for the Static Web App Entra application client secret."
   type        = number
