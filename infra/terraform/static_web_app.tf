@@ -9,6 +9,13 @@ resource "azurerm_static_web_app" "web" {
     AZURE_CLIENT_SECRET_APP_SETTING_NAME = azuread_application_password.static_web_app.value
   }
   tags = local.common_tags
+
+  lifecycle {
+    ignore_changes = [
+      repository_branch,
+      repository_url,
+    ]
+  }
 }
 
 # Link the Static Web App to the managed Azure Function API so the UI can call /api/*.
@@ -17,4 +24,12 @@ resource "azurerm_static_web_app" "web" {
 resource "azurerm_static_web_app_function_app_registration" "api" {
   static_web_app_id = azurerm_static_web_app.web.id
   function_app_id   = azurerm_linux_function_app.api.id
+}
+
+resource "azurerm_static_web_app_custom_domain" "web" {
+  count = var.custom_domain_name == null ? 0 : 1
+
+  static_web_app_id = azurerm_static_web_app.web.id
+  domain_name       = var.custom_domain_name
+  validation_type   = var.custom_domain_validation_type
 }

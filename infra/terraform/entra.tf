@@ -7,9 +7,14 @@ resource "azuread_application" "static_web_app" {
 resource "azuread_application_redirect_uris" "static_web_app" {
   application_id = azuread_application.static_web_app.id
   type           = "Web"
-  redirect_uris = [
-    "https://${azurerm_static_web_app.web.default_host_name}/.auth/login/aad/callback"
-  ]
+  redirect_uris = concat(
+    [
+      "https://${azurerm_static_web_app.web.default_host_name}/.auth/login/aad/callback"
+    ],
+    var.custom_domain_name == null ? [] : [
+      "https://${var.custom_domain_name}/.auth/login/aad/callback"
+    ]
+  )
 }
 
 resource "azuread_service_principal" "static_web_app" {

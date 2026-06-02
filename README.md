@@ -156,6 +156,36 @@ If Function App creation fails with `Operation cannot be completed without addit
 
 The Function is designed to be reached through the Static Web App `/api` route. If you expose the Function App directly, add an additional access restriction layer before production use.
 
+## Custom Domain
+
+For a subdomain such as `tools.example.com`, create a DNS CNAME pointing to the Static Web App default hostname:
+
+```text
+tools.example.com -> <static-web-app-default-hostname>
+```
+
+Then set this in `infra/terraform/terraform.tfvars`:
+
+```hcl
+custom_domain_name            = "tools.example.com"
+custom_domain_validation_type = "cname-delegation"
+```
+
+Run:
+
+```bash
+terraform plan
+terraform apply
+```
+
+Terraform will add the Static Web App custom domain and add the matching Entra callback URL:
+
+```text
+https://tools.example.com/.auth/login/aad/callback
+```
+
+For an apex/root domain, use `custom_domain_validation_type = "dns-txt-token"` and follow the TXT validation token shown by `terraform output static_web_app_custom_domain_validation_token`.
+
 ## Tests
 
 ```bash

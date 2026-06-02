@@ -49,4 +49,11 @@ resource "azurerm_linux_function_app" "api" {
     FUNCTIONS_WORKER_RUNTIME       = "python"
     SCM_DO_BUILD_DURING_DEPLOYMENT = "true"
   }
+
+  lifecycle {
+    ignore_changes = [
+      auth_settings_v2,
+      tags["hidden-link: /app-insights-resource-id"],
+    ]
+  }
 }
