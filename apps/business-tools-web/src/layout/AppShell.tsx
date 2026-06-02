@@ -43,7 +43,7 @@ export function AppShell({ tools, activeToolId, environment, onSelectTool }: App
           </div>
           <div className="session">
             <span>{userName}</span>
-            <a href="/logout">Sign out</a>
+            <a href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>
           </div>
         </header>
         <section className="tool-surface">{activeTool.component}</section>

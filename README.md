@@ -169,6 +169,7 @@ Then set this in `infra/terraform/terraform.tfvars`:
 ```hcl
 custom_domain_name            = "tools.example.com"
 custom_domain_validation_type = "cname-delegation"
+static_web_app_default_host_name = "<static-web-app-default-hostname>"
 ```
 
 Run:

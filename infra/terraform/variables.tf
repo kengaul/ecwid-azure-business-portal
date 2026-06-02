@@ -73,6 +73,12 @@ variable "custom_domain_name" {
   default     = null
 }
 
+variable "static_web_app_default_host_name" {
+  description = "Existing Static Web App default hostname, for example red-coast-0b79b0103.7.azurestaticapps.net. Set after the first apply so Terraform can manage Entra redirect URIs without a dependency cycle."
+  type        = string
+  default     = null
+}
+
 variable "custom_domain_validation_type" {
   description = "Validation type for the Static Web App custom domain. Use cname-delegation for subdomains and dns-txt-token for apex domains."
   type        = string

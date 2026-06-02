@@ -2,19 +2,17 @@ resource "azuread_application" "static_web_app" {
   display_name     = "${local.name_prefix}-static-web-app"
   sign_in_audience = "AzureADMyOrg"
   owners           = [data.azurerm_client_config.current.object_id]
-}
 
-resource "azuread_application_redirect_uris" "static_web_app" {
-  application_id = azuread_application.static_web_app.id
-  type           = "Web"
-  redirect_uris = concat(
-    [
-      "https://${azurerm_static_web_app.web.default_host_name}/.auth/login/aad/callback"
-    ],
-    var.custom_domain_name == null ? [] : [
-      "https://${var.custom_domain_name}/.auth/login/aad/callback"
-    ]
-  )
+  web {
+    redirect_uris = concat(
+      [
+        "https://${coalesce(var.static_web_app_default_host_name, "pending-static-web-app-hostname")}/.auth/login/aad/callback"
+      ],
+      var.custom_domain_name == null ? [] : [
+        "https://${var.custom_domain_name}/.auth/login/aad/callback"
+      ]
+    )
+  }
 }
 
 resource "azuread_service_principal" "static_web_app" {
