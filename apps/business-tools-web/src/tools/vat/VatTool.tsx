@@ -31,6 +31,7 @@ export function VatTool() {
     () => categories.find((category) => category.id === selectedCategoryId) ?? null,
     [categories, selectedCategoryId]
   );
+  const categoryOptions = useMemo(() => buildCategoryOptions(categories), [categories]);
   const canPreview = Boolean(selectedCategoryId && !busy);
   const canApply = Boolean(preview?.canApply && selectedCategoryId && selectedProductIds.size > 0 && !busy);
 
@@ -90,10 +91,10 @@ export function VatTool() {
           }}
         >
           <option value="">Select a category</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-              {category.enabled ? "" : " (disabled)"}
+          {categoryOptions.map((option) => (
+            <option key={option.category.id} value={option.category.id}>
+              {option.label}
+              {option.category.enabled ? "" : " (disabled)"}
             </option>
           ))}
         </select>
@@ -140,6 +141,56 @@ export function VatTool() {
       </div>
     </div>
   );
+}
+
+type CategorySelectOption = {
+  category: CategoryOption;
+  label: string;
+};
+
+function buildCategoryOptions(categories: CategoryOption[]): CategorySelectOption[] {
+  const byId = new Map(categories.map((category) => [category.id, category]));
+  const childrenByParent = new Map<number | null, CategoryOption[]>();
+
+  for (const category of categories) {
+    const parentId = category.parent_id ?? null;
+    const parentKey = parentId && byId.has(parentId) ? parentId : null;
+    const children = childrenByParent.get(parentKey) ?? [];
+    children.push(category);
+    childrenByParent.set(parentKey, children);
+  }
+
+  for (const children of childrenByParent.values()) {
+    children.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  const options: CategorySelectOption[] = [];
+  const visited = new Set<number>();
+
+  function visit(category: CategoryOption, depth: number, parentPath: string) {
+    if (visited.has(category.id)) {
+      return;
+    }
+    visited.add(category.id);
+
+    const path = parentPath ? `${parentPath} / ${category.name}` : category.name;
+    const prefix = depth > 0 ? `${"  ".repeat(depth)}-- ` : "";
+    options.push({ category, label: `${prefix}${path}` });
+
+    for (const child of childrenByParent.get(category.id) ?? []) {
+      visit(child, depth + 1, path);
+    }
+  }
+
+  for (const root of childrenByParent.get(null) ?? []) {
+    visit(root, 0, "");
+  }
+
+  for (const category of categories) {
+    visit(category, 0, "");
+  }
+
+  return options;
 }
 
 function StatusMessage({ tone, icon, text }: { tone: "success" | "danger"; icon: JSX.Element; text: string }) {
