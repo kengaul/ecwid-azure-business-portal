@@ -43,6 +43,23 @@ export async function postJson<TResponse>(path: string, body: unknown): Promise<
   return data;
 }
 
+export async function getJson<TResponse>(path: string): Promise<TResponse> {
+  let response: Response;
+
+  try {
+    response = await fetch(apiUrl(path));
+  } catch {
+    throw new Error("The API is not reachable. Start the Azure Functions API locally or check the deployed API connection.");
+  }
+
+  const data = await readJson<TResponse>(response);
+  if (!response.ok) {
+    const maybeError = data as { error?: string };
+    throw new Error(maybeError.error ?? `Request failed with status ${response.status}`);
+  }
+  return data;
+}
+
 export async function getCurrentUser(): Promise<{ clientPrincipal: { userDetails: string } | null }> {
   try {
     const response = await fetch("/.auth/me");

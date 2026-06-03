@@ -1,0 +1,183 @@
+import { AlertTriangle, CheckCircle2, Play, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  CategoryOption,
+  VatApplyResponse,
+  VatPlan,
+  VatProduct,
+  VatPreviewResponse,
+  applyVat,
+  fetchVatCategories,
+  previewVat
+} from "./vatApi";
+
+export function VatTool() {
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [preview, setPreview] = useState<VatPreviewResponse | null>(null);
+  const [applyResult, setApplyResult] = useState<VatApplyResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
+
+  useEffect(() => {
+    fetchVatCategories()
+      .then((response) => setCategories(response.categories))
+      .catch((err) => setError(err instanceof Error ? err.message : "Categories failed to load."))
+      .finally(() => setBusy(null));
+  }, []);
+
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === selectedCategoryId) ?? null,
+    [categories, selectedCategoryId]
+  );
+  const canPreview = Boolean(selectedCategoryId && !busy);
+  const canApply = Boolean(preview?.canApply && selectedCategoryId && !busy);
+
+  async function handlePreview() {
+    if (!selectedCategoryId) {
+      return;
+    }
+
+    setBusy("preview");
+    setError(null);
+    setApplyResult(null);
+    try {
+      setPreview(await previewVat(selectedCategoryId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Preview failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleApply() {
+    if (!selectedCategoryId) {
+      return;
+    }
+
+    setBusy("apply");
+    setError(null);
+    try {
+      setApplyResult(await applyVat(selectedCategoryId));
+      setPreview(await previewVat(selectedCategoryId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Apply failed.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="vat-tool">
+      <div className="input-panel">
+        <div className="panel-heading">
+          <h2>Category</h2>
+          <span className="muted">{busy === "load" ? "Loading" : `${categories.length} available`}</span>
+        </div>
+        <select
+          value={selectedCategoryId ?? ""}
+          disabled={busy === "load"}
+          onChange={(event) => {
+            setSelectedCategoryId(event.target.value ? Number(event.target.value) : null);
+            setPreview(null);
+            setApplyResult(null);
+          }}
+        >
+          <option value="">Select a category</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+              {category.enabled ? "" : " (disabled)"}
+            </option>
+          ))}
+        </select>
+        {selectedCategory ? (
+          <div className="category-summary">
+            <strong>{selectedCategory.name}</strong>
+            <span>{selectedCategory.enabled ? "Enabled" : "Disabled"}</span>
+          </div>
+        ) : null}
+        <div className="actions">
+          <button type="button" className="primary-action" disabled={!canPreview} onClick={handlePreview}>
+            <Search size={18} aria-hidden="true" />
+            {busy === "preview" ? "Checking" : "Preview"}
+          </button>
+          <button type="button" className="danger-action" disabled={!canApply} onClick={handleApply}>
+            <Play size={18} aria-hidden="true" />
+            {busy === "apply" ? "Updating" : "Confirm update"}
+          </button>
+        </div>
+        {error ? <StatusMessage tone="danger" icon={<AlertTriangle size={18} />} text={error} /> : null}
+        {applyResult ? (
+          <StatusMessage
+            tone={applyResult.result.partial_failure ? "danger" : "success"}
+            icon={applyResult.result.partial_failure ? <AlertTriangle size={18} /> : <CheckCircle2 size={18} />}
+            text={
+              applyResult.result.partial_failure
+                ? "The update stopped after a failed Ecwid request."
+                : "VAT update completed."
+            }
+          />
+        ) : null}
+      </div>
+
+      <div className="preview-panel">
+        {preview ? <VatPlanDetails plan={preview.plan} /> : <div className="empty-state">Preview a category before updating.</div>}
+      </div>
+    </div>
+  );
+}
+
+function StatusMessage({ tone, icon, text }: { tone: "success" | "danger"; icon: JSX.Element; text: string }) {
+  return (
+    <div className={`status-message ${tone}`}>
+      {icon}
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function VatPlanDetails({ plan }: { plan: VatPlan }) {
+  const metrics = [
+    { label: "Update", value: plan.products_to_update.length },
+    { label: "Already zero", value: plan.already_zero_rated.length }
+  ];
+
+  return (
+    <div>
+      <div className="metrics compact">
+        {metrics.map((item) => (
+          <div className="metric" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+      <div className="plan-details">
+        <ProductList title="Will be set to zero rate" products={plan.products_to_update} empty="No products need updating." />
+        <ProductList title="Already zero-rated" products={plan.already_zero_rated} empty="No products are currently zero-rated." />
+      </div>
+    </div>
+  );
+}
+
+function ProductList({ title, products, empty }: { title: string; products: VatProduct[]; empty: string }) {
+  return (
+    <section>
+      <h3>{title}</h3>
+      {products.length === 0 ? (
+        <p className="muted">{empty}</p>
+      ) : (
+        <div className="product-table">
+          {products.map((product) => (
+            <div className="product-row vat-row" key={`${title}-${product.id}`}>
+              <span className="sku">{product.sku || product.id}</span>
+              <span>{product.name}</span>
+              <span className="priority">{product.current_tax_class_code ?? "none"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
