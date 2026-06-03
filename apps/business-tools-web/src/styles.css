@@ -300,6 +300,24 @@ select {
   font-size: 16px;
 }
 
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.section-heading h3 {
+  margin: 0;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .product-table {
   display: grid;
   border: 1px solid #dfddd5;
@@ -320,6 +338,18 @@ select {
 
 .product-row.vat-row {
   grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(72px, 120px);
+}
+
+.product-row.selectable-row {
+  grid-template-columns: 28px minmax(120px, 180px) minmax(0, 1fr) minmax(72px, 120px);
+  cursor: pointer;
+}
+
+.product-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #0f6a5c;
 }
 
 .product-row:last-child {

@@ -30,6 +30,32 @@ def _category_id_from_request(req: func.HttpRequest) -> int | None:
         return None
 
 
+def _request_payload(req: func.HttpRequest) -> dict:
+    try:
+        payload = req.get_json()
+    except ValueError:
+        payload = {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _selected_product_ids_from_request(req: func.HttpRequest) -> set[int] | None:
+    payload = _request_payload(req)
+    if "productIds" not in payload:
+        return None
+
+    raw_product_ids = payload.get("productIds")
+    if not isinstance(raw_product_ids, list):
+        raise ValueError("Product selection must be a list.")
+
+    selected_product_ids: set[int] = set()
+    for raw_product_id in raw_product_ids:
+        try:
+            selected_product_ids.add(int(raw_product_id))
+        except (TypeError, ValueError):
+            raise ValueError("Product selection contains an invalid product ID.") from None
+    return selected_product_ids
+
+
 def categories(req: func.HttpRequest) -> func.HttpResponse:
     try:
         client = _client_from_settings()
@@ -69,10 +95,11 @@ def apply(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         client = _client_from_settings()
-        plan = build_vat_plan(category_id, client=client)
+        selected_product_ids = _selected_product_ids_from_request(req)
+        plan = build_vat_plan(category_id, client=client, selected_product_ids=selected_product_ids)
         if not plan.products_to_update:
             return error_response(
-                "All products in this category are already zero-rated.",
+                "No selected products need updating.",
                 status_code=400,
                 plan=to_jsonable(plan),
             )

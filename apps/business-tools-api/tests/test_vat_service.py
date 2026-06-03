@@ -64,6 +64,32 @@ def test_build_vat_plan_finds_products_not_already_zero_rated():
     assert [product.sku for product in plan.already_zero_rated] == ["ZERO"]
 
 
+def test_build_vat_plan_limits_products_to_selected_ids():
+    client = FakeVatClient(
+        categories=[{"id": 10, "name": "Books", "enabled": True}],
+        products=[
+            {
+                "id": 1,
+                "sku": "KEEP",
+                "name": "Keep",
+                "enabled": True,
+                "tax": {"taxable": True, "defaultLocationIncludedTaxRate": 20, "taxClassCode": "default"},
+            },
+            {
+                "id": 2,
+                "sku": "SKIP",
+                "name": "Skip",
+                "enabled": True,
+                "tax": {"taxable": True, "defaultLocationIncludedTaxRate": 20, "taxClassCode": "default"},
+            },
+        ],
+    )
+
+    plan = build_vat_plan(10, client, selected_product_ids={1})
+
+    assert [product.sku for product in plan.products_to_update] == ["KEEP"]
+
+
 def test_build_vat_plan_rejects_missing_category():
     client = FakeVatClient(categories=[], products=[])
 

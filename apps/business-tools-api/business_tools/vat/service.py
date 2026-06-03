@@ -52,7 +52,11 @@ def list_categories(client: VatEcwidClient) -> list[CategoryOption]:
     return sorted(categories, key=lambda category: (category.name.casefold(), category.id))
 
 
-def build_vat_plan(category_id: int, client: VatEcwidClient) -> VatPlan:
+def build_vat_plan(
+    category_id: int,
+    client: VatEcwidClient,
+    selected_product_ids: set[int] | None = None,
+) -> VatPlan:
     categories = {category.id: category for category in list_categories(client)}
     if category_id not in categories:
         raise ValueError(f"Category {category_id} was not found.")
@@ -63,6 +67,10 @@ def build_vat_plan(category_id: int, client: VatEcwidClient) -> VatPlan:
         for product in products
         if (product.current_tax_class_code or "").casefold() != ZERO_RATED_TAX_CLASS_CODE
     ]
+    if selected_product_ids is not None:
+        products_to_update = [
+            product for product in products_to_update if product.id in selected_product_ids
+        ]
     already_zero_rated = [
         product
         for product in products

@@ -57,6 +57,6 @@ export function previewVat(categoryId: number) {
   return postJson<VatPreviewResponse>("/api/vat/preview", { categoryId });
 }
 
-export function applyVat(categoryId: number) {
-  return postJson<VatApplyResponse>("/api/vat/apply", { categoryId });
+export function applyVat(categoryId: number, productIds: number[]) {
+  return postJson<VatApplyResponse>("/api/vat/apply", { categoryId, productIds });
 }

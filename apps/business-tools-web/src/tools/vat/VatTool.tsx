@@ -15,6 +15,7 @@ export function VatTool() {
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [preview, setPreview] = useState<VatPreviewResponse | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<number>>(new Set());
   const [applyResult, setApplyResult] = useState<VatApplyResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
@@ -31,7 +32,7 @@ export function VatTool() {
     [categories, selectedCategoryId]
   );
   const canPreview = Boolean(selectedCategoryId && !busy);
-  const canApply = Boolean(preview?.canApply && selectedCategoryId && !busy);
+  const canApply = Boolean(preview?.canApply && selectedCategoryId && selectedProductIds.size > 0 && !busy);
 
   async function handlePreview() {
     if (!selectedCategoryId) {
@@ -42,7 +43,9 @@ export function VatTool() {
     setError(null);
     setApplyResult(null);
     try {
-      setPreview(await previewVat(selectedCategoryId));
+      const nextPreview = await previewVat(selectedCategoryId);
+      setPreview(nextPreview);
+      setSelectedProductIds(new Set(nextPreview.plan.products_to_update.map((product) => product.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Preview failed.");
     } finally {
@@ -58,8 +61,10 @@ export function VatTool() {
     setBusy("apply");
     setError(null);
     try {
-      setApplyResult(await applyVat(selectedCategoryId));
-      setPreview(await previewVat(selectedCategoryId));
+      setApplyResult(await applyVat(selectedCategoryId, Array.from(selectedProductIds)));
+      const nextPreview = await previewVat(selectedCategoryId);
+      setPreview(nextPreview);
+      setSelectedProductIds(new Set(nextPreview.plan.products_to_update.map((product) => product.id)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Apply failed.");
     } finally {
@@ -80,6 +85,7 @@ export function VatTool() {
           onChange={(event) => {
             setSelectedCategoryId(event.target.value ? Number(event.target.value) : null);
             setPreview(null);
+            setSelectedProductIds(new Set());
             setApplyResult(null);
           }}
         >
@@ -104,7 +110,7 @@ export function VatTool() {
           </button>
           <button type="button" className="danger-action" disabled={!canApply} onClick={handleApply}>
             <Play size={18} aria-hidden="true" />
-            {busy === "apply" ? "Updating" : "Confirm update"}
+            {busy === "apply" ? "Updating" : `Confirm ${selectedProductIds.size}`}
           </button>
         </div>
         {error ? <StatusMessage tone="danger" icon={<AlertTriangle size={18} />} text={error} /> : null}
@@ -122,7 +128,15 @@ export function VatTool() {
       </div>
 
       <div className="preview-panel">
-        {preview ? <VatPlanDetails plan={preview.plan} /> : <div className="empty-state">Preview a category before updating.</div>}
+        {preview ? (
+          <VatPlanDetails
+            plan={preview.plan}
+            selectedProductIds={selectedProductIds}
+            onSelectionChange={setSelectedProductIds}
+          />
+        ) : (
+          <div className="empty-state">Preview a category before updating.</div>
+        )}
       </div>
     </div>
   );
@@ -137,11 +151,38 @@ function StatusMessage({ tone, icon, text }: { tone: "success" | "danger"; icon:
   );
 }
 
-function VatPlanDetails({ plan }: { plan: VatPlan }) {
+function VatPlanDetails({
+  plan,
+  selectedProductIds,
+  onSelectionChange
+}: {
+  plan: VatPlan;
+  selectedProductIds: Set<number>;
+  onSelectionChange: (selectedProductIds: Set<number>) => void;
+}) {
   const metrics = [
-    { label: "Update", value: plan.products_to_update.length },
+    { label: "Selected", value: selectedProductIds.size },
+    { label: "Eligible", value: plan.products_to_update.length },
     { label: "Already zero", value: plan.already_zero_rated.length }
   ];
+
+  function selectAll() {
+    onSelectionChange(new Set(plan.products_to_update.map((product) => product.id)));
+  }
+
+  function selectNone() {
+    onSelectionChange(new Set());
+  }
+
+  function toggleProduct(productId: number) {
+    const next = new Set(selectedProductIds);
+    if (next.has(productId)) {
+      next.delete(productId);
+    } else {
+      next.add(productId);
+    }
+    onSelectionChange(next);
+  }
 
   return (
     <div>
@@ -154,9 +195,60 @@ function VatPlanDetails({ plan }: { plan: VatPlan }) {
         ))}
       </div>
       <div className="plan-details">
-        <ProductList title="Will be set to zero rate" products={plan.products_to_update} empty="No products need updating." />
+        <section>
+          <div className="section-heading">
+            <h3>Will be set to zero rate</h3>
+            <div className="inline-actions">
+              <button type="button" className="text-button" onClick={selectAll}>
+                Select all
+              </button>
+              <button type="button" className="text-button" onClick={selectNone}>
+                Select none
+              </button>
+            </div>
+          </div>
+          <SelectableProductList
+            products={plan.products_to_update}
+            selectedProductIds={selectedProductIds}
+            onToggle={toggleProduct}
+            empty="No products need updating."
+          />
+        </section>
         <ProductList title="Already zero-rated" products={plan.already_zero_rated} empty="No products are currently zero-rated." />
       </div>
+    </div>
+  );
+}
+
+function SelectableProductList({
+  products,
+  selectedProductIds,
+  onToggle,
+  empty
+}: {
+  products: VatProduct[];
+  selectedProductIds: Set<number>;
+  onToggle: (productId: number) => void;
+  empty: string;
+}) {
+  if (products.length === 0) {
+    return <p className="muted">{empty}</p>;
+  }
+
+  return (
+    <div className="product-table">
+      {products.map((product) => (
+        <label className="product-row vat-row selectable-row" key={`selectable-${product.id}`}>
+          <input
+            type="checkbox"
+            checked={selectedProductIds.has(product.id)}
+            onChange={() => onToggle(product.id)}
+          />
+          <span className="sku">{product.sku || product.id}</span>
+          <span>{product.name}</span>
+          <span className="priority">{product.current_tax_class_code ?? "none"}</span>
+        </label>
+      ))}
     </div>
   );
 }

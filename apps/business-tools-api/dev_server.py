@@ -59,7 +59,11 @@ class DevApiHandler(BaseHTTPRequestHandler):
             client, max_skus = build_client()
             if self.path in {"/api/vat/preview", "/api/vat/apply"}:
                 category_id = int(payload.get("categoryId"))
-                plan = build_vat_plan(category_id, client=client)
+                selected_ids = payload.get("productIds")
+                selected_product_ids = None
+                if selected_ids is not None:
+                    selected_product_ids = {int(product_id) for product_id in selected_ids}
+                plan = build_vat_plan(category_id, client=client, selected_product_ids=selected_product_ids)
                 if self.path == "/api/vat/preview":
                     self.write_json(
                         {"ok": True, "canApply": len(plan.products_to_update) > 0, "plan": to_jsonable(plan)}
@@ -70,7 +74,7 @@ class DevApiHandler(BaseHTTPRequestHandler):
                     self.write_json(
                         {
                             "ok": False,
-                            "error": "All products in this category are already zero-rated.",
+                            "error": "No selected products need updating.",
                             "plan": to_jsonable(plan),
                         },
                         status=400,
