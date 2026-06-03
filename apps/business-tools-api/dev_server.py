@@ -10,6 +10,7 @@ from business_tools.ecwid.client import EcwidClient, EcwidClientError
 from business_tools.frontpage.models import to_jsonable
 from business_tools.frontpage.service import apply_frontpage_plan, build_frontpage_plan
 from business_tools.shared.settings import load_settings
+from business_tools.vat.service import apply_vat_plan, build_vat_plan, list_categories
 
 
 def load_local_settings() -> None:
@@ -34,16 +35,55 @@ class DevApiHandler(BaseHTTPRequestHandler):
         if self.path == "/api/health":
             self.write_json({"ok": True})
             return
+        if self.path == "/api/vat/categories":
+            try:
+                client, _ = build_client()
+                self.write_json({"ok": True, "categories": to_jsonable(list_categories(client))})
+            except Exception as exc:
+                self.write_json({"ok": False, "error": str(exc)}, status=500)
+            return
         self.write_json({"ok": False, "error": "Not found"}, status=404)
 
     def do_POST(self) -> None:
-        if self.path not in {"/api/frontpage/preview", "/api/frontpage/apply"}:
+        if self.path not in {
+            "/api/frontpage/preview",
+            "/api/frontpage/apply",
+            "/api/vat/preview",
+            "/api/vat/apply",
+        }:
             self.write_json({"ok": False, "error": "Not found"}, status=404)
             return
 
         try:
             payload = self.read_json()
             client, max_skus = build_client()
+            if self.path in {"/api/vat/preview", "/api/vat/apply"}:
+                category_id = int(payload.get("categoryId"))
+                plan = build_vat_plan(category_id, client=client)
+                if self.path == "/api/vat/preview":
+                    self.write_json(
+                        {"ok": True, "canApply": len(plan.products_to_update) > 0, "plan": to_jsonable(plan)}
+                    )
+                    return
+
+                if not plan.products_to_update:
+                    self.write_json(
+                        {
+                            "ok": False,
+                            "error": "All products in this category are already zero-rated.",
+                            "plan": to_jsonable(plan),
+                        },
+                        status=400,
+                    )
+                    return
+
+                result = apply_vat_plan(plan, client=client)
+                self.write_json(
+                    {"ok": not result.partial_failure, "result": to_jsonable(result)},
+                    status=207 if result.partial_failure else 200,
+                )
+                return
+
             plan = build_frontpage_plan(payload.get("skus", ""), client=client, max_skus=max_skus)
 
             if self.path == "/api/frontpage/preview":

@@ -1,0 +1,1 @@
+"""VAT category update tool."""
