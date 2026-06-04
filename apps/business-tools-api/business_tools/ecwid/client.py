@@ -94,9 +94,6 @@ class EcwidClient:
             products.extend(items)
             offset += limit
 
-    def get_products_by_attribute(self, attribute_name: str, attribute_value: str) -> list[dict[str, Any]]:
-        return self.search_enabled_products({f"attribute_{attribute_name}": attribute_value})
-
     def get_all_categories(self) -> list[dict[str, Any]]:
         categories: list[dict[str, Any]] = []
         offset = 0

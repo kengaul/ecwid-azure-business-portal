@@ -20,16 +20,6 @@ class FakeFeaturedClient:
     def search_enabled_products(self, extra_params=None):
         return self.products
 
-    def get_products_by_attribute(self, attribute_name, attribute_value):
-        return [
-            product
-            for product in self.products
-            if any(
-                attribute.get("name") == attribute_name and attribute.get("value") == attribute_value
-                for attribute in product.get("attributes", [])
-            )
-        ]
-
     def get_products_by_category(self, category_id):
         return self.current_featured
 
@@ -47,11 +37,11 @@ def product(product_id, sku, name, supplier, category_ids, default_category_id=1
         "enabled": True,
         "categoryIds": category_ids,
         "defaultCategoryId": default_category_id,
-        "attributes": [{"name": "Brand", "value": supplier}],
+        "attributes": [{"name": "", "type": "SUPPLIER", "value": supplier}],
     }
 
 
-def test_list_suppliers_counts_enabled_products_by_attribute():
+def test_list_suppliers_counts_enabled_products_by_supplier_attribute_type():
     client = FakeFeaturedClient(
         categories=[],
         products=[
@@ -61,11 +51,37 @@ def test_list_suppliers_counts_enabled_products_by_attribute():
         ],
     )
 
-    suppliers = list_suppliers(client, "Brand")
+    suppliers = list_suppliers(client)
 
     assert [(supplier.name, supplier.product_count) for supplier in suppliers] == [
         ("Acme", 2),
         ("BeeCo", 1),
+    ]
+
+
+def test_list_suppliers_includes_supplier_with_empty_attribute_name():
+    client = FakeFeaturedClient(
+        categories=[],
+        products=[
+            {
+                "id": 22833,
+                "sku": "22833 - Base",
+                "name": "Moonshine - Car Diffuser",
+                "enabled": True,
+                "categoryIds": [10, 99],
+                "defaultCategoryId": 10,
+                "attributes": [
+                    {"name": "", "type": "SUPPLIER", "value": "Moonshine Candle Co."},
+                    {"name": "", "type": "TAGS", "value": "Diffusers & Roomsprays"},
+                ],
+            }
+        ],
+    )
+
+    suppliers = list_suppliers(client)
+
+    assert [(supplier.name, supplier.product_count) for supplier in suppliers] == [
+        ("Moonshine Candle Co.", 1)
     ]
 
 
@@ -115,7 +131,6 @@ def test_build_featured_plan_adds_supplier_products_and_removes_unselected_featu
     plan = build_featured_plan(
         "Acme",
         client,
-        supplier_attribute_name="Brand",
         featured_category_name="Featured Products",
     )
 
@@ -137,7 +152,6 @@ def test_build_featured_plan_honours_selected_product_ids():
     plan = build_featured_plan(
         "Acme",
         client,
-        supplier_attribute_name="Brand",
         featured_category_name="Featured Products",
         selected_product_ids={1},
     )
@@ -158,7 +172,6 @@ def test_apply_featured_plan_updates_only_category_ids():
     plan = build_featured_plan(
         "Acme",
         client,
-        supplier_attribute_name="Brand",
         featured_category_name="Featured Products",
     )
 
@@ -178,7 +191,7 @@ def test_apply_featured_plan_preserves_non_featured_categories_from_category_ids
         "categoryIds": [11, featured_id],
         "defaultCategoryId": 11,
         "categories": [{"id": featured_id, "name": "Featured Products", "enabled": False}],
-        "attributes": [{"name": "Brand", "value": "Other"}],
+        "attributes": [{"name": "", "type": "SUPPLIER", "value": "Other"}],
     }
     client = FakeFeaturedClient(
         categories=[{"id": featured_id, "name": "Featured Products", "enabled": False}],
@@ -188,7 +201,6 @@ def test_apply_featured_plan_preserves_non_featured_categories_from_category_ids
     plan = build_featured_plan(
         "Acme",
         client,
-        supplier_attribute_name="Brand",
         featured_category_name="Featured Products",
         selected_product_ids=set(),
     )
@@ -211,7 +223,6 @@ def test_apply_featured_plan_stops_on_failure():
     plan = build_featured_plan(
         "Acme",
         client,
-        supplier_attribute_name="Brand",
         featured_category_name="Featured Products",
     )
 

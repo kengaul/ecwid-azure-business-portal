@@ -48,8 +48,8 @@ def suppliers(req: func.HttpRequest) -> func.HttpResponse:
         return json_response(
             {
                 "ok": True,
-                "supplierAttributeName": settings.supplier_attribute_name,
-                "suppliers": to_jsonable(list_suppliers(client, settings.supplier_attribute_name)),
+                "supplierAttributeName": "Supplier",
+                "suppliers": to_jsonable(list_suppliers(client)),
             }
         )
     except (RuntimeError, EcwidClientError) as exc:
@@ -66,7 +66,6 @@ def preview(req: func.HttpRequest) -> func.HttpResponse:
         plan = build_featured_plan(
             supplier=supplier,
             client=client,
-            supplier_attribute_name=settings.supplier_attribute_name,
             featured_category_name=settings.featured_products_category_name,
         )
     except ValueError as exc:
@@ -88,7 +87,6 @@ def apply(req: func.HttpRequest) -> func.HttpResponse:
         plan = build_featured_plan(
             supplier=supplier,
             client=client,
-            supplier_attribute_name=settings.supplier_attribute_name,
             featured_category_name=settings.featured_products_category_name,
             selected_product_ids=selected_product_ids,
         )

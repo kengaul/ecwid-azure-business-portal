@@ -20,9 +20,6 @@ class FeaturedEcwidClient(Protocol):
     def search_enabled_products(self, extra_params: dict[str, str] | None = None) -> list[dict]:
         ...
 
-    def get_products_by_attribute(self, attribute_name: str, attribute_value: str) -> list[dict]:
-        ...
-
     def get_products_by_category(self, category_id: int) -> list[dict]:
         ...
 
@@ -38,6 +35,14 @@ def _attribute_value(product: dict, attribute_name: str) -> str | None:
     return None
 
 
+def _supplier_value(product: dict) -> str | None:
+    for attribute in product.get("attributes") or []:
+        if str(attribute.get("type", "")).casefold() == "supplier":
+            value = str(attribute.get("value", "")).strip()
+            return value or None
+    return _attribute_value(product, "Supplier") or _attribute_value(product, "Brand")
+
+
 def _category_ids(product: dict) -> list[int]:
     ids = product.get("categoryIds")
     if isinstance(ids, list):
@@ -46,7 +51,7 @@ def _category_ids(product: dict) -> list[int]:
     return [int(category["id"]) for category in categories if "id" in category]
 
 
-def _featured_product(product: dict, supplier_attribute_name: str, featured_category_id: int) -> FeaturedProduct:
+def _featured_product(product: dict, featured_category_id: int) -> FeaturedProduct:
     category_ids = _category_ids(product)
     default_category_id = product.get("defaultCategoryId")
     return FeaturedProduct(
@@ -54,7 +59,7 @@ def _featured_product(product: dict, supplier_attribute_name: str, featured_cate
         sku=str(product.get("sku", "")),
         name=str(product.get("name", "")),
         enabled=bool(product.get("enabled", True)),
-        supplier=_attribute_value(product, supplier_attribute_name),
+        supplier=_supplier_value(product),
         category_ids=category_ids,
         default_category_id=int(default_category_id) if default_category_id is not None else None,
         is_currently_featured=featured_category_id in category_ids,
@@ -83,10 +88,10 @@ def resolve_featured_category(
     )
 
 
-def list_suppliers(client: FeaturedEcwidClient, supplier_attribute_name: str) -> list[SupplierOption]:
+def list_suppliers(client: FeaturedEcwidClient) -> list[SupplierOption]:
     counts: Counter[str] = Counter()
     for product in client.search_enabled_products():
-        supplier = _attribute_value(product, supplier_attribute_name)
+        supplier = _supplier_value(product)
         if supplier:
             counts[supplier] += 1
 
@@ -99,7 +104,6 @@ def list_suppliers(client: FeaturedEcwidClient, supplier_attribute_name: str) ->
 def build_featured_plan(
     supplier: str,
     client: FeaturedEcwidClient,
-    supplier_attribute_name: str,
     featured_category_name: str,
     selected_product_ids: set[int] | None = None,
 ) -> FeaturedPlan:
@@ -109,8 +113,9 @@ def build_featured_plan(
 
     featured_category = resolve_featured_category(client, featured_category_name)
     supplier_products = [
-        _featured_product(product, supplier_attribute_name, featured_category.id)
-        for product in client.get_products_by_attribute(supplier_attribute_name, supplier)
+        _featured_product(product, featured_category.id)
+        for product in client.search_enabled_products()
+        if (_supplier_value(product) or "").casefold() == supplier.casefold()
     ]
     selectable_products = sorted(supplier_products, key=lambda product: (product.name.casefold(), product.id))
     if selected_product_ids is None:
@@ -119,7 +124,7 @@ def build_featured_plan(
     selected_products = [product for product in selectable_products if product.id in selected_product_ids]
     selected_ids = {product.id for product in selected_products}
     current_featured = [
-        _featured_product(product, supplier_attribute_name, featured_category.id)
+        _featured_product(product, featured_category.id)
         for product in client.get_products_by_category(featured_category.id)
     ]
     selected_existing_ids = {product.id for product in selected_products if product.is_currently_featured}

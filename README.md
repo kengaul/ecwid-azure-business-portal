@@ -42,12 +42,12 @@ func start
 
 Set `ECWID_API_TOKEN` and `ECWID_SHOP_ID` in `local.settings.json` before calling Ecwid.
 
-The Featured Products tool defaults are owned by the app code:
+The Featured Products tool conventions are owned by the app code:
 
-- Supplier attribute: `Brand`.
+- Supplier source: Ecwid product attribute type `SUPPLIER`.
 - Featured category name: `Featured Products`.
 
-The lookup includes disabled/hidden categories and fails if the category name is missing or duplicated. These defaults can still be overridden with `SUPPLIER_ATTRIBUTE_NAME` or `FEATURED_PRODUCTS_CATEGORY_NAME` environment variables if the catalogue changes later.
+The category lookup includes disabled/hidden categories and fails if the category name is missing or duplicated. The category name can still be overridden with `FEATURED_PRODUCTS_CATEGORY_NAME` if the catalogue changes later.
 
 ## Local Web App
 

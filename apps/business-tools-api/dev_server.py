@@ -54,8 +54,8 @@ class DevApiHandler(BaseHTTPRequestHandler):
                 self.write_json(
                     {
                         "ok": True,
-                        "supplierAttributeName": settings.supplier_attribute_name,
-                        "suppliers": to_jsonable(list_suppliers(client, settings.supplier_attribute_name)),
+                        "supplierAttributeName": "Supplier",
+                        "suppliers": to_jsonable(list_suppliers(client)),
                     }
                 )
             except Exception as exc:
@@ -89,7 +89,6 @@ class DevApiHandler(BaseHTTPRequestHandler):
                 plan = build_featured_plan(
                     supplier=str(payload.get("supplier", "")).strip(),
                     client=client,
-                    supplier_attribute_name=settings.supplier_attribute_name,
                     featured_category_name=settings.featured_products_category_name,
                     selected_product_ids=selected_product_ids,
                 )
