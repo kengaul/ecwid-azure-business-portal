@@ -10,6 +10,8 @@ class Settings:
     ecwid_shop_id: str
     max_skus: int = 200
     app_environment: str = "production"
+    supplier_attribute_name: str = "Brand"
+    featured_products_category_name: str = "Featured Products"
 
 
 def _required_env(name: str) -> str:
@@ -26,4 +28,8 @@ def load_settings() -> Settings:
         ecwid_shop_id=_required_env("ECWID_SHOP_ID"),
         max_skus=max_skus,
         app_environment=os.environ.get("APP_ENVIRONMENT", "production"),
+        supplier_attribute_name=os.environ.get("SUPPLIER_ATTRIBUTE_NAME", "Brand"),
+        featured_products_category_name=os.environ.get(
+            "FEATURED_PRODUCTS_CATEGORY_NAME", "Featured Products"
+        ),
     )

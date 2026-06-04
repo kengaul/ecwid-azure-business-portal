@@ -1,0 +1,1 @@
+"""Featured products category tool."""

@@ -150,7 +150,8 @@ button:disabled {
 }
 
 .frontpage-tool,
-.vat-tool {
+.vat-tool,
+.featured-tool {
   display: grid;
   grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
   gap: 24px;
@@ -336,7 +337,8 @@ select {
   background: #ffffff;
 }
 
-.product-row.vat-row {
+.product-row.vat-row,
+.product-row.featured-row {
   grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(72px, 120px);
 }
 
@@ -423,7 +425,9 @@ select {
     display: none;
   }
 
-  .frontpage-tool {
+  .frontpage-tool,
+  .vat-tool,
+  .featured-tool {
     grid-template-columns: 1fr;
   }
 

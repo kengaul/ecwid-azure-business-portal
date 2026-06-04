@@ -62,6 +62,41 @@ class EcwidClient:
             products.extend(items)
             offset += limit
 
+    def search_enabled_products(self, extra_params: dict[str, str] | None = None) -> list[dict[str, Any]]:
+        products: list[dict[str, Any]] = []
+        offset = 0
+        limit = 100
+        params = {
+            "enabled": "true",
+            "responseFields": (
+                "items(id,sku,name,enabled,categoryIds,defaultCategoryId,"
+                "categories(id,name,enabled),attributes(id,name,value,type,show))"
+            ),
+        }
+        if extra_params:
+            params.update(extra_params)
+
+        while True:
+            response = self.session.get(
+                f"{self.base_url}/products",
+                params={**params, "offset": offset, "limit": limit},
+                timeout=self.timeout_seconds,
+            )
+            if response.status_code != 200:
+                raise EcwidClientError(
+                    f"Failed to search products: {response.status_code} - {response.text}"
+                )
+
+            items = response.json().get("items", [])
+            if not items:
+                return products
+
+            products.extend(items)
+            offset += limit
+
+    def get_products_by_attribute(self, attribute_name: str, attribute_value: str) -> list[dict[str, Any]]:
+        return self.search_enabled_products({f"attribute_{attribute_name}": attribute_value})
+
     def get_all_categories(self) -> list[dict[str, Any]]:
         categories: list[dict[str, Any]] = []
         offset = 0
@@ -105,8 +140,9 @@ class EcwidClient:
                     "category": str(category_id),
                     "includeProductsFromSubcategories": "false",
                     "responseFields": (
-                        "items(id,sku,name,enabled,tax(taxable,defaultLocationIncludedTaxRate,"
-                        "enabledManualTaxes,taxClassCode),categories(id,name,enabled))"
+                        "items(id,sku,name,enabled,categoryIds,defaultCategoryId,"
+                        "tax(taxable,defaultLocationIncludedTaxRate,enabledManualTaxes,taxClassCode),"
+                        "categories(id,name,enabled),attributes(id,name,value,type,show))"
                     ),
                 },
                 timeout=self.timeout_seconds,
@@ -144,5 +180,17 @@ class EcwidClient:
         if response.status_code != 200:
             raise EcwidClientError(
                 f"Failed to update tax class for product {product_id}: "
+                f"{response.status_code} - {response.text}"
+            )
+
+    def update_product_category_ids(self, product_id: int, category_ids: list[int]) -> None:
+        response = self.session.put(
+            f"{self.base_url}/products/{product_id}",
+            json={"categoryIds": category_ids},
+            timeout=self.timeout_seconds,
+        )
+        if response.status_code != 200:
+            raise EcwidClientError(
+                f"Failed to update categories for product {product_id}: "
                 f"{response.status_code} - {response.text}"
             )

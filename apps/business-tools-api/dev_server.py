@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from business_tools.ecwid.client import EcwidClient, EcwidClientError
+from business_tools.featured.service import apply_featured_plan, build_featured_plan, list_suppliers
 from business_tools.frontpage.models import to_jsonable
 from business_tools.frontpage.service import apply_frontpage_plan, build_frontpage_plan
 from business_tools.shared.settings import load_settings
@@ -28,6 +29,11 @@ def build_client() -> tuple[EcwidClient, int]:
     return EcwidClient(settings.ecwid_api_token, settings.ecwid_shop_id), settings.max_skus
 
 
+def build_client_and_settings() -> tuple[EcwidClient, Any]:
+    settings = load_settings()
+    return EcwidClient(settings.ecwid_api_token, settings.ecwid_shop_id), settings
+
+
 class DevApiHandler(BaseHTTPRequestHandler):
     server_version = "BusinessToolsDevApi/0.1"
 
@@ -42,6 +48,19 @@ class DevApiHandler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self.write_json({"ok": False, "error": str(exc)}, status=500)
             return
+        if self.path == "/api/featured/suppliers":
+            try:
+                client, settings = build_client_and_settings()
+                self.write_json(
+                    {
+                        "ok": True,
+                        "supplierAttributeName": settings.supplier_attribute_name,
+                        "suppliers": to_jsonable(list_suppliers(client, settings.supplier_attribute_name)),
+                    }
+                )
+            except Exception as exc:
+                self.write_json({"ok": False, "error": str(exc)}, status=500)
+            return
         self.write_json({"ok": False, "error": "Not found"}, status=404)
 
     def do_POST(self) -> None:
@@ -50,12 +69,42 @@ class DevApiHandler(BaseHTTPRequestHandler):
             "/api/frontpage/apply",
             "/api/vat/preview",
             "/api/vat/apply",
+            "/api/featured/preview",
+            "/api/featured/apply",
         }:
             self.write_json({"ok": False, "error": "Not found"}, status=404)
             return
 
         try:
             payload = self.read_json()
+            if self.path in {"/api/featured/preview", "/api/featured/apply"}:
+                client, settings = build_client_and_settings()
+                selected_product_ids = None
+                if "productIds" in payload:
+                    product_ids = payload.get("productIds")
+                    if not isinstance(product_ids, list):
+                        raise ValueError("Product selection must be a list.")
+                    selected_product_ids = {int(product_id) for product_id in product_ids}
+
+                plan = build_featured_plan(
+                    supplier=str(payload.get("supplier", "")).strip(),
+                    client=client,
+                    supplier_attribute_name=settings.supplier_attribute_name,
+                    featured_category_name=settings.featured_products_category_name,
+                    selected_product_ids=selected_product_ids,
+                )
+
+                if self.path == "/api/featured/preview":
+                    self.write_json({"ok": True, "canApply": True, "plan": to_jsonable(plan)})
+                    return
+
+                result = apply_featured_plan(plan, client=client)
+                self.write_json(
+                    {"ok": not result.partial_failure, "result": to_jsonable(result)},
+                    status=207 if result.partial_failure else 200,
+                )
+                return
+
             client, max_skus = build_client()
             if self.path in {"/api/vat/preview", "/api/vat/apply"}:
                 category_id = int(payload.get("categoryId"))
@@ -110,6 +159,8 @@ class DevApiHandler(BaseHTTPRequestHandler):
                 {"ok": not result.partial_failure, "result": to_jsonable(result)},
                 status=207 if result.partial_failure else 200,
             )
+        except ValueError as exc:
+            self.write_json({"ok": False, "error": str(exc)}, status=400)
         except (RuntimeError, EcwidClientError, json.JSONDecodeError) as exc:
             self.write_json({"ok": False, "error": str(exc)}, status=500)
 

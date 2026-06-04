@@ -1,6 +1,6 @@
 # Azure Business Tools Portal
 
-This repository now contains a small Azure-hosted portal for non-technical business users. The first tool lets a user paste SKUs, preview the Ecwid frontpage changes, and confirm the update.
+This repository contains a small Azure-hosted portal for non-technical business users. It includes tools for Ecwid frontpage SKUs, zero-rating VAT by category, and managing the online-store Featured Products category by supplier.
 
 ## Layout
 
@@ -41,6 +41,13 @@ func start
 ```
 
 Set `ECWID_API_TOKEN` and `ECWID_SHOP_ID` in `local.settings.json` before calling Ecwid.
+
+The Featured Products tool defaults are owned by the app code:
+
+- Supplier attribute: `Brand`.
+- Featured category name: `Featured Products`.
+
+The lookup includes disabled/hidden categories and fails if the category name is missing or duplicated. These defaults can still be overridden with `SUPPLIER_ATTRIBUTE_NAME` or `FEATURED_PRODUCTS_CATEGORY_NAME` environment variables if the catalogue changes later.
 
 ## Local Web App
 

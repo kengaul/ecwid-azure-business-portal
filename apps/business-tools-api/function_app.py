@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import azure.functions as func
 
+from business_tools.featured import routes as featured_routes
 from business_tools.frontpage import routes
 from business_tools.shared.responses import json_response
 from business_tools.vat import routes as vat_routes
@@ -37,3 +38,18 @@ def vat_preview(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="vat/apply", methods=["POST"])
 def vat_apply(req: func.HttpRequest) -> func.HttpResponse:
     return vat_routes.apply(req)
+
+
+@app.route(route="featured/suppliers", methods=["GET"])
+def featured_suppliers(req: func.HttpRequest) -> func.HttpResponse:
+    return featured_routes.suppliers(req)
+
+
+@app.route(route="featured/preview", methods=["POST"])
+def featured_preview(req: func.HttpRequest) -> func.HttpResponse:
+    return featured_routes.preview(req)
+
+
+@app.route(route="featured/apply", methods=["POST"])
+def featured_apply(req: func.HttpRequest) -> func.HttpResponse:
+    return featured_routes.apply(req)

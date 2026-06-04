@@ -1,6 +1,7 @@
-import { Construction, Home, Percent } from "lucide-react";
+import { Construction, Home, Percent, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppShell, ToolDefinition } from "./layout/AppShell";
+import { FeaturedTool } from "./tools/featured/FeaturedTool";
 import { FrontpageTool } from "./tools/frontpage/FrontpageTool";
 import { ComingSoon } from "./tools/placeholder/ComingSoon";
 import { VatTool } from "./tools/vat/VatTool";
@@ -23,6 +24,14 @@ export function App() {
         icon: Percent,
         enabled: true,
         component: <VatTool />
+      },
+      {
+        id: "featured",
+        label: "Featured Products",
+        route: "/featured",
+        icon: Star,
+        enabled: true,
+        component: <FeaturedTool />
       },
       {
         id: "operations",
