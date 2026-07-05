@@ -37,8 +37,8 @@ export async function postJson<TResponse>(path: string, body: unknown): Promise<
 
   const data = await readJson<TResponse>(response);
   if (!response.ok && response.status !== 207) {
-    const maybeError = data as { error?: string };
-    throw new Error(maybeError.error ?? `Request failed with status ${response.status}`);
+    const maybeError = data as { detail?: string; error?: string };
+    throw new Error(maybeError.error ?? maybeError.detail ?? `Request failed with status ${response.status}`);
   }
   return data;
 }
@@ -54,8 +54,8 @@ export async function getJson<TResponse>(path: string): Promise<TResponse> {
 
   const data = await readJson<TResponse>(response);
   if (!response.ok) {
-    const maybeError = data as { error?: string };
-    throw new Error(maybeError.error ?? `Request failed with status ${response.status}`);
+    const maybeError = data as { detail?: string; error?: string };
+    throw new Error(maybeError.error ?? maybeError.detail ?? `Request failed with status ${response.status}`);
   }
   return data;
 }

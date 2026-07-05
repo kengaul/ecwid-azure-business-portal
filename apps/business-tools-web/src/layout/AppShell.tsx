@@ -20,7 +20,8 @@ type AppShellProps = {
 };
 
 export function AppShell({ tools, activeToolId, environment, onSelectTool }: AppShellProps) {
-  const [userName, setUserName] = useState<string>("Signed in");
+  const [userName, setUserName] = useState<string>("Local user");
+  const [canSignOut, setCanSignOut] = useState(false);
   const activeTool = useMemo(
     () => tools.find((tool) => tool.id === activeToolId) ?? tools[0],
     [activeToolId, tools]
@@ -28,8 +29,14 @@ export function AppShell({ tools, activeToolId, environment, onSelectTool }: App
 
   useEffect(() => {
     getCurrentUser()
-      .then((user) => setUserName(user.clientPrincipal?.userDetails ?? "Signed in"))
-      .catch(() => setUserName("Signed in"));
+      .then((user) => {
+        setUserName(user.clientPrincipal?.userDetails ?? "Local user");
+        setCanSignOut(Boolean(user.clientPrincipal));
+      })
+      .catch(() => {
+        setUserName("Local user");
+        setCanSignOut(false);
+      });
   }, []);
 
   return (
@@ -43,7 +50,7 @@ export function AppShell({ tools, activeToolId, environment, onSelectTool }: App
           </div>
           <div className="session">
             <span>{userName}</span>
-            <a href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>
+            {canSignOut ? <a href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a> : null}
           </div>
         </header>
         <section className="tool-surface">{activeTool.component}</section>
