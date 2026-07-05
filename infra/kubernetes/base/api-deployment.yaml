@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: business-tools-api
+  labels:
+    app.kubernetes.io/name: business-tools-api
+    app.kubernetes.io/part-of: business-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: business-tools-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: business-tools-api
+        app.kubernetes.io/part-of: business-tools
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/example/business-tools-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: APP_ENVIRONMENT
+              valueFrom:
+                configMapKeyRef:
+                  name: business-tools-config
+                  key: APP_ENVIRONMENT
+            - name: FRONTPAGE_MAX_SKUS
+              valueFrom:
+                configMapKeyRef:
+                  name: business-tools-config
+                  key: FRONTPAGE_MAX_SKUS
+            - name: ECWID_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: business-tools-api-secret
+                  key: ECWID_API_TOKEN
+            - name: ECWID_SHOP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: business-tools-api-secret
+                  key: ECWID_SHOP_ID
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ingress.yaml
+  - oauth2-proxy-ingress.yaml
+
+images:
+  - name: ghcr.io/example/business-tools-api
+    newName: ghcr.io/your-org/business-tools-api
+    newTag: latest
+  - name: ghcr.io/example/business-tools-web
+    newName: ghcr.io/your-org/business-tools-web
+    newTag: latest

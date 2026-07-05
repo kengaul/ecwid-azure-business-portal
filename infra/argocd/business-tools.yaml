@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: business-tools
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kengaul/ecwid-azure-business-portal.git
+    targetRevision: main
+    path: infra/kubernetes/overlays/local
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ecwid
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

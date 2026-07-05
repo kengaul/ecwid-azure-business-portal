@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: business-tools-oauth2-proxy
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - business-tools.local
+      secretName: business-tools-tls
+  rules:
+    - host: business-tools.local
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: business-tools-oauth2-proxy
+                port:
+                  name: http

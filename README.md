@@ -149,6 +149,81 @@ AZURE_FUNCTIONAPP_PUBLISH_PROFILE
 
 Push the repo to GitHub, open **Actions**, choose **Deploy Business Tools**, and run the workflow manually.
 
+## Kubernetes Deployment
+
+The app can also run outside Azure on Kubernetes. In that mode:
+
+- `apps/business-tools-api/asgi_app.py` serves the existing business logic through FastAPI.
+- `apps/business-tools-web/Dockerfile` builds the React app and serves it with nginx.
+- nginx proxies `/api` to the internal `business-tools-api` service.
+- Ecwid credentials are read from a Kubernetes Secret, not Terraform or committed YAML.
+
+Build and publish both images to GHCR with the **Publish Containers** GitHub Actions workflow, or locally with:
+
+```bash
+docker build -t ghcr.io/<owner>/business-tools-api:<tag> apps/business-tools-api
+docker build -t ghcr.io/<owner>/business-tools-web:<tag> apps/business-tools-web
+docker push ghcr.io/<owner>/business-tools-api:<tag>
+docker push ghcr.io/<owner>/business-tools-web:<tag>
+```
+
+Update image names and tags in:
+
+```text
+infra/kubernetes/overlays/local/kustomization.yaml
+```
+
+Create the runtime secret in the target cluster:
+
+```bash
+kubectl create namespace business-tools
+kubectl create secret generic business-tools-api-secret \
+  --namespace business-tools \
+  --from-literal=ECWID_API_TOKEN='<ecwid-api-token>' \
+  --from-literal=ECWID_SHOP_ID='<ecwid-shop-id>'
+```
+
+The Kubernetes ingress is protected by `oauth2-proxy` using Microsoft Entra ID / OIDC. Create an Entra app registration with this web redirect URI, replacing the hostname with your real ingress hostname:
+
+```text
+https://business-tools.local/oauth2/callback
+```
+
+Create a client secret for that Entra app, then create the auth secret in the cluster:
+
+```bash
+COOKIE_SECRET="$(openssl rand -base64 32)"
+kubectl create secret generic business-tools-auth-secret \
+  --namespace business-tools \
+  --from-literal=OIDC_ISSUER_URL='https://login.microsoftonline.com/<tenant-id>/v2.0' \
+  --from-literal=OAUTH2_PROXY_CLIENT_ID='<entra-application-client-id>' \
+  --from-literal=OAUTH2_PROXY_CLIENT_SECRET='<entra-client-secret>' \
+  --from-literal=OAUTH2_PROXY_COOKIE_SECRET="$COOKIE_SECRET"
+```
+
+To restrict access to assigned users/groups, set assignment required on the Entra Enterprise Application and assign the allowed users or groups. To require MFA, create a Conditional Access policy targeting the same Enterprise Application.
+
+Edit `infra/kubernetes/overlays/local/ingress.yaml` and `infra/kubernetes/overlays/local/oauth2-proxy-ingress.yaml` for your ingress class and hostname. Also update `OAUTH2_PROXY_REDIRECT_URL` in `infra/kubernetes/base/kustomization.yaml`, or override it in your overlay. The default hostname is:
+
+```text
+business-tools.local
+```
+
+For GitOps, edit `infra/argocd/business-tools.yaml` so `repoURL` points to your repository, then apply it to the cluster where Argo CD is installed:
+
+```bash
+kubectl apply -f infra/argocd/business-tools.yaml
+```
+
+For a quick non-Argo test:
+
+```bash
+kubectl apply -k infra/kubernetes/overlays/local
+kubectl -n business-tools port-forward svc/business-tools-web 8080:80
+```
+
+Then open `http://127.0.0.1:8080`.
+
 ## Security Notes
 
 The Static Web App configuration uses a Terraform-managed Entra app registration for Microsoft login. Terraform also creates the matching Enterprise Application service principal and, by default, sets `app_role_assignment_required = true`.
