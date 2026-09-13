@@ -17,7 +17,7 @@ configMapGenerator:
     literals:
       - APP_ENVIRONMENT=kubernetes
       - FRONTPAGE_MAX_SKUS=200
-      - OAUTH2_PROXY_REDIRECT_URL=https://business-tools.local/oauth2/callback
+      - OAUTH2_PROXY_REDIRECT_URL=https://macmini.localdomain:8081/oauth2/callback
 
 generatorOptions:
   disableNameSuffixHash: true

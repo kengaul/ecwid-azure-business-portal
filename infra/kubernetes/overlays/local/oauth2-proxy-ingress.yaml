@@ -6,10 +6,10 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        - business-tools.local
+        - macmini.localdomain
       secretName: business-tools-tls
   rules:
-    - host: business-tools.local
+    - host: macmini.localdomain
       http:
         paths:
           - path: /oauth2
@@ -19,3 +19,4 @@ spec:
                 name: business-tools-oauth2-proxy
                 port:
                   name: http
+
