@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   name: business-tools-oauth2-proxy
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   tls:
     - hosts:
         - business-tools.local
