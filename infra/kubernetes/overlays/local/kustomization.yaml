@@ -5,6 +5,7 @@ resources:
   - ../../base
   - ingress.yaml
   - oauth2-proxy-ingress.yaml
+  - bitwarden-secrets.yaml
 
 images:
   - name: ghcr.io/example/business-tools-api
