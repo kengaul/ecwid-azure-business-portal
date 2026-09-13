@@ -10,7 +10,7 @@ spec:
   ingressClassName: traefik
   tls:
     - hosts:
-        -- host: macmini.localdomain
+      - macmini.localdomain
       secretName: business-tools-tls
   rules:
     - host: macmini.localdomain
@@ -23,4 +23,3 @@ spec:
                 name: business-tools-web
                 port:
                   name: http
-
