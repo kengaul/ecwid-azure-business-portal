@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - ../../base
   - ingress.yaml
-  - oauth2-proxy-ingress.yaml
   - bitwarden-secrets.yaml
 
 images:

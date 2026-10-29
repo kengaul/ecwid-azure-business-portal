@@ -1,0 +1,15 @@
+Find name and IDs for matching lightspeed categories
+jq --arg search "$1" '.items[] | select(.origin == "X_SERIES" and (.name | test($search; "i"))) | {id,name}' categories.json
+
+Find similar categories
+non_x_series_names=$(jq -r '.items[] | select(.origin != "X_SERIES") | .name' categories.json)
+
+while IFS= read -r name; do
+  echo "Matches for: $name"
+  jq --arg name "$name" '
+    .items[]
+    | select(.origin == "X_SERIES" and (.name | test($name; "i")))
+    | {id, name}
+  ' categories.json
+done <<< "$non_x_series_names"
+

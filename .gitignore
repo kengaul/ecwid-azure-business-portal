@@ -16,3 +16,4 @@ terraform.tfstate.*
 category*
 categories.json
 dataclass.go
+.DS_Store

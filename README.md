@@ -151,6 +151,12 @@ Push the repo to GitHub, open **Actions**, choose **Deploy Business Tools**, and
 
 ## Kubernetes Deployment
 
+For repeatable secret recovery and Argo-managed synchronization, use the
+Bitwarden Secrets Manager integration described in
+`infra/kubernetes/bitwarden/README.md`. Kubernetes Secrets are generated from
+Bitwarden and their values are never committed to Git. The machine-account
+token is a one-time cluster bootstrap secret and must also remain outside Git.
+
 The app can also run outside Azure on Kubernetes. In that mode:
 
 - `apps/business-tools-api/asgi_app.py` serves the existing business logic through FastAPI.
@@ -183,7 +189,15 @@ kubectl create secret generic business-tools-api-secret \
   --from-literal=ECWID_SHOP_ID='<ecwid-shop-id>'
 ```
 
-The Kubernetes ingress is protected by `oauth2-proxy` using Microsoft Entra ID / OIDC. Create an Entra app registration with this web redirect URI, replacing the hostname with your real ingress hostname:
+The Kubernetes web container enforces authentication using nginx `auth_request`
+and `oauth2-proxy` with Microsoft Entra ID / OIDC. Traefik routes traffic to nginx;
+authentication does not depend on ingress-controller annotations. nginx protects
+all portal, API and embedded-tool routes by default. Only `/oauth2/` (the login
+handshake) and `/healthz` (a plain health response) bypass the check. New tools
+must be proxied through this web container and must not have an unprotected
+external Ingress of their own.
+
+Create an Entra app registration with this web redirect URI, replacing the hostname with your real ingress hostname:
 
 ```text
 https://business-tools.local/oauth2/callback
@@ -192,7 +206,7 @@ https://business-tools.local/oauth2/callback
 Create a client secret for that Entra app, then create the auth secret in the cluster:
 
 ```bash
-COOKIE_SECRET="$(openssl rand -base64 32)"
+COOKIE_SECRET="$(openssl rand -hex 16)"
 kubectl create secret generic business-tools-auth-secret \
   --namespace business-tools \
   --from-literal=OIDC_ISSUER_URL='https://login.microsoftonline.com/<tenant-id>/v2.0' \
@@ -203,10 +217,21 @@ kubectl create secret generic business-tools-auth-secret \
 
 To restrict access to assigned users/groups, set assignment required on the Entra Enterprise Application and assign the allowed users or groups. To require MFA, create a Conditional Access policy targeting the same Enterprise Application.
 
-Edit `infra/kubernetes/overlays/local/ingress.yaml` and `infra/kubernetes/overlays/local/oauth2-proxy-ingress.yaml` for your ingress class and hostname. Also update `OAUTH2_PROXY_REDIRECT_URL` in `infra/kubernetes/base/kustomization.yaml`, or override it in your overlay. The default hostname is:
+Edit `infra/kubernetes/overlays/local/ingress.yaml` for your ingress class and
+hostname. In `infra/kubernetes/base/kustomization.yaml`, set `PUBLIC_ORIGIN` to
+the external HTTPS origin, `PUBLIC_HOST` to its hostname including any port, and
+`OAUTH2_PROXY_REDIRECT_URL` to that origin plus `/oauth2/callback`. The checked-in
+local settings use `https://macmini.localdomain:8081`. The callback must exactly
+match the Entra registration. nginx uses these explicit values rather than
+trusting client-supplied forwarding headers. `AUTH_UPSTREAM` in the web
+Deployment points to the internal oauth2-proxy Service.
+
+The separate oauth2-proxy ingress manifest is no longer included in Kustomize;
+the portal ingress handles the callback through nginx. With Argo pruning enabled,
+sync removes the old ingress. The configured local hostname is:
 
 ```text
-business-tools.local
+macmini.localdomain
 ```
 
 For GitOps, edit `infra/argocd/business-tools.yaml` so `repoURL` points to your repository, then apply it to the cluster where Argo CD is installed:
@@ -222,7 +247,29 @@ kubectl apply -k infra/kubernetes/overlays/local
 kubectl -n business-tools port-forward svc/business-tools-web 8080:80
 ```
 
-Then open `http://127.0.0.1:8080`.
+The forwarded HTTP endpoint can check `/healthz`; login requires access through
+the configured public HTTPS origin so secure cookies and the Entra callback work.
+
+Validate without browser cookies after deploying the updated web image and
+manifests:
+
+```bash
+curl -k -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' https://macmini.localdomain:8081/
+curl -k -sS -o /dev/null -w '%{http_code}\n' https://macmini.localdomain:8081/api/health
+```
+
+Expect a login redirect for `/` and `401` for `/api/health`. `-k` is only for the
+local certificate. An incognito browser should redirect through Microsoft login;
+after login, the portal should show the account email and API requests should
+succeed. Existing Microsoft sessions may complete login without a password prompt.
+Sign out clears the portal cookie; Microsoft SSO may sign the user back in on the
+next visit. A failed or unavailable auth service must deny access.
+
+Build and publish the new web image before syncing the manifest changes, and
+deploy an immutable image tag. A manifest-only sync cannot add authentication to
+the old web image. The web image requires `API_UPSTREAM`, `AUTH_UPSTREAM`,
+`PUBLIC_ORIGIN`, and `PUBLIC_HOST` when run directly with Docker. Local Vite
+development and Azure Static Web Apps keep their existing authentication behavior.
 
 ## Security Notes
 

@@ -26,15 +26,27 @@ spec:
           env:
             - name: API_UPSTREAM
               value: http://business-tools-api:8000
+            - name: AUTH_UPSTREAM
+              value: http://business-tools-oauth2-proxy:4180
+            - name: PUBLIC_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: business-tools-config
+                  key: PUBLIC_ORIGIN
+            - name: PUBLIC_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: business-tools-config
+                  key: PUBLIC_HOST
           readinessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /
+              path: /healthz
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20

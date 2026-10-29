@@ -66,7 +66,16 @@ export async function getCurrentUser(): Promise<{ clientPrincipal: { userDetails
     if (!response.ok) {
       return { clientPrincipal: null };
     }
-    return readJson(response);
+    const data = await readJson<{
+      clientPrincipal?: { userDetails: string } | null;
+      email?: string;
+      user?: string;
+    }>(response);
+    // Azure Static Web Apps and the Kubernetes oauth2-proxy use different shapes.
+    const userDetails = data.email ?? data.user;
+    return {
+      clientPrincipal: data.clientPrincipal ?? (userDetails ? { userDetails } : null)
+    };
   } catch {
     return { clientPrincipal: null };
   }
