@@ -1,0 +1,159 @@
+# Internal OrderHelper service for the Business Tools portal. No external Ingress.
+# Forwarded headers are trusted only behind the web-pod ingress NetworkPolicy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retail-reorder-config
+  namespace: business-tools
+  labels:
+    app.kubernetes.io/part-of: business-tools
+data:
+  default.yaml: |
+    reorder:
+      recent_sale_days: 60
+      recent_receipt_days: 365
+      allow_zero_stock_with_old_sale: true
+      allow_missing_receipt_as_legacy: true
+    inventory:
+      negative_as_zero: true
+      subtract_inbound_from_replenishment: true
+    analysis:
+      minimum_items_sold: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: retail-reorder
+  namespace: business-tools
+  labels:
+    app.kubernetes.io/name: retail-reorder
+    app.kubernetes.io/part-of: business-tools
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: retail-reorder
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: retail-reorder
+        app.kubernetes.io/part-of: business-tools
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: retail-reorder
+          image: ghcr.io/kengaul/orderhelper:sha-184aadcb1d0f5c69a1a7fac9a4a282dcb27dc49f
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: REORDER_CONFIG
+              value: /app/config/default.yaml
+            - name: TMPDIR
+              value: /tmp
+            - name: UVICORN_ROOT_PATH
+              value: /order-helper
+            - name: UVICORN_WORKERS
+              value: '1'
+            - name: FORWARDED_ALLOW_IPS
+              value: '*'
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+              readOnly: true
+            - name: temporary-files
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: retail-reorder-config
+            defaultMode: 292
+        - name: temporary-files
+          emptyDir:
+            medium: Memory
+            sizeLimit: 32Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: retail-reorder
+  namespace: business-tools
+  labels:
+    app.kubernetes.io/name: retail-reorder
+    app.kubernetes.io/part-of: business-tools
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: retail-reorder
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: retail-reorder
+  namespace: business-tools
+  labels:
+    app.kubernetes.io/part-of: business-tools
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: retail-reorder
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: business-tools-web
+      ports:
+        - protocol: TCP
+          port: 8000

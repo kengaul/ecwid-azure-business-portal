@@ -11,6 +11,7 @@ resources:
   - oauth2-proxy-service.yaml
   - web-deployment.yaml
   - web-service.yaml
+  - order-helper/retail-reorder.yaml
 
 configMapGenerator:
   - name: business-tools-config

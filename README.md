@@ -271,6 +271,28 @@ the old web image. The web image requires `API_UPSTREAM`, `AUTH_UPSTREAM`,
 `PUBLIC_ORIGIN`, and `PUBLIC_HOST` when run directly with Docker. Local Vite
 development and Azure Static Web Apps keep their existing authentication behavior.
 
+## Internal OrderHelper service
+
+The existing Business Tools Argo Application also deploys OrderHelper from
+`infra/kubernetes/base/order-helper/retail-reorder.yaml`. It runs in
+`business-tools` with one replica and one worker; unfinished reviews are lost
+on restart. Its ClusterIP Service is `retail-reorder:8000` and it has no external
+Ingress. A NetworkPolicy permits incoming pod traffic only from the Business
+Tools web pods. The cluster must enforce NetworkPolicy because the application
+has no independent login and trusts the portal's forwarded headers.
+
+OrderHelper is configured for `/order-helper/`. The authenticated nginx proxy
+route and dock button are a separate integration step; deploying the Service
+alone does not add a tool to the UI.
+
+Application source and image publishing remain in `kengaul/orderhelper`. After
+a successful build, update this deployment's image to its exact published
+`sha-<full-commit-sha>` tag and push this repository for Argo to deploy it.
+Do not use `latest` or create a separate Argo Application. Rule changes belong
+in the `retail-reorder-config` ConfigMap and require a Deployment restart to
+clear the process-local rule cache. Keep those rules aligned with OrderHelper's
+`config/default.yaml`. Supplier browser automation is not part of this container.
+
 ## Security Notes
 
 The Static Web App configuration uses a Terraform-managed Entra app registration for Microsoft login. Terraform also creates the matching Enterprise Application service principal and, by default, sets `app_role_assignment_required = true`.
