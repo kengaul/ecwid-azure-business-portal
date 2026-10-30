@@ -12,4 +12,4 @@ images:
     newTag: latest
   - name: ghcr.io/example/business-tools-web
     newName: ghcr.io/kengaul/business-tools-web
-    newTag: latest
+    newTag: 692af8f
