@@ -1,10 +1,11 @@
-import { Construction, Home, Percent, Star } from "lucide-react";
+import { Construction, Home, Percent, ShoppingCart, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppShell, ToolDefinition } from "./layout/AppShell";
 import { FeaturedTool } from "./tools/featured/FeaturedTool";
 import { FrontpageTool } from "./tools/frontpage/FrontpageTool";
 import { ComingSoon } from "./tools/placeholder/ComingSoon";
 import { VatTool } from "./tools/vat/VatTool";
+import { OrderHelperTool } from "./tools/order-helper/OrderHelperTool";
 
 export function App() {
   const tools = useMemo<ToolDefinition[]>(
@@ -32,6 +33,14 @@ export function App() {
         icon: Star,
         enabled: true,
         component: <FeaturedTool />
+      },
+      {
+        id: "order-helper",
+        label: "Order Helper",
+        route: "/order-helper",
+        icon: ShoppingCart,
+        enabled: true,
+        component: <OrderHelperTool />
       },
       {
         id: "operations",
