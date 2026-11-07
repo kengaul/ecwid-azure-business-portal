@@ -50,6 +50,8 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      imagePullSecrets:
+        - name: ghcr-pull
       containers:
         - name: retail-reorder
           image: ghcr.io/kengaul/orderhelper:sha-184aadcb1d0f5c69a1a7fac9a4a282dcb27dc49f
